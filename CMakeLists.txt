@@ -26,6 +26,14 @@ cmake_minimum_required(VERSION 3.5)
 
 project(PahoMqttCpp VERSION "1.4.0.1")
 
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${ANDROID_SDK_ROOT}/external_libs/${PROJECT_NAME}/${ANDROID_ABI}/)
+set(CMAKE_INSTALL_PREFIX "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
+message (STATUS "CMAKE_LIBRARY_OUTPUT_DIRECTORY: ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+
+set(OPENSSL_INCLUDE_DIR "${ANDROID_SDK_ROOT}/android_openssl/ssl_3/include" CACHE PATH "OpenSSL include directory" FORCE)
+set(OPENSSL_CRYPTO_LIBRARY "${ANDROID_SDK_ROOT}/android_openssl/ssl_3/${ANDROID_ABI}/libcrypto_3.so" CACHE PATH "OpenSSL crypto library" FORCE)
+set(OPENSSL_SSL_LIBRARY "${ANDROID_SDK_ROOT}/android_openssl/ssl_3/${ANDROID_ABI}/libssl_3.so" CACHE PATH "OpenSSL ssl library" FORCE)
+
 ## --- Build options ---
 
 if(WIN32)
@@ -42,7 +50,7 @@ endif()
 option(PAHO_BUILD_SAMPLES "Build sample programs" FALSE)
 option(PAHO_BUILD_TESTS "Build tests (requires Catch2)" FALSE)
 option(PAHO_BUILD_DOCUMENTATION "Create and install the API documentation (requires Doxygen)" FALSE)
-option(PAHO_WITH_MQTT_C "Build Paho C from the internal GIT submodule." FALSE)
+set(PAHO_WITH_MQTT_C TRUE CACHE BOOL "Build Paho C from the internal GIT submodule.")
 
 if(NOT PAHO_BUILD_SHARED AND NOT PAHO_BUILD_STATIC)
   message(FATAL_ERROR "You must set either PAHO_BUILD_SHARED, PAHO_BUILD_STATIC, or both")
@@ -57,7 +65,7 @@ if(PAHO_WITH_MQTT_C)
   set(PAHO_ENABLE_TESTING FALSE CACHE BOOL "No Paho C tests")
   set(PAHO_HIGH_PERFORMANCE TRUE CACHE BOOL "Paho C high performance")
 
-  add_subdirectory(${PROJECT_SOURCE_DIR}/externals/paho-mqtt-c)
+  add_subdirectory(${PROJECT_SOURCE_DIR}/src/externals/paho-mqtt-c)
 
   ## Alias namespace so that the full names can be used with the subdir.
   if(PAHO_BUILD_SHARED)
@@ -72,26 +80,28 @@ if(PAHO_WITH_MQTT_C)
       add_library(eclipse-paho-mqtt-c::paho-mqtt3as-static ALIAS paho-mqtt3as-static)
     endif()
   endif()
-
-  ## install paho.mqtt.c library (appending to PahoMqttCpp export)
-  install(TARGETS ${PAHO_MQTT_C_LIB}
-    EXPORT PahoMqttCpp
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  )
 else()
   find_package(eclipse-paho-mqtt-c REQUIRED)
 endif()
 
 if(PAHO_WITH_SSL)
   find_package(OpenSSL REQUIRED)
-  set(PAHO_MQTT_C_LIB eclipse-paho-mqtt-c::paho-mqtt3as)
+  set(PAHO_MQTT_C_LIB paho-mqtt3as)
 else()
-  set(PAHO_MQTT_C_LIB eclipse-paho-mqtt-c::paho-mqtt3a)
+  set(PAHO_MQTT_C_LIB paho-mqtt3a)
 endif()
 
 if(PAHO_BUILD_STATIC AND NOT PAHO_BUILD_SHARED)
   set(PAHO_MQTT_C_LIB ${PAHO_MQTT_C_LIB}-static)
+endif()
+
+if(PAHO_WITH_MQTT_C)
+    ## install paho.mqtt.c library (appending to PahoMqttCpp export)
+    install(TARGETS ${PAHO_MQTT_C_LIB}
+      EXPORT PahoMqttCpp
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
 endif()
 
 ## --- C++11 build flags ---
